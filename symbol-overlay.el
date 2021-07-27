@@ -308,8 +308,7 @@ This only affects symbols in the current displayed window if
 `symbol-overlay-displayed-window' is non-nil."
   (when symbol-overlay-mode
     (let* ((case-fold-search nil)
-           (symbol (symbol-overlay-get-symbol t))
-           p)
+           (symbol (symbol-overlay-get-symbol t)))
       (when (and symbol
                  (not (symbol-overlay-assoc symbol))
                  (not (symbol-overlay-ignored-p symbol)))
@@ -320,14 +319,12 @@ This only affects symbols in the current displayed window if
                                    symbol-overlay-displayed-window)
             (goto-char (point-min))
             (let ((re (symbol-overlay-regexp symbol)))
-              (re-search-forward re nil t)
-              (save-match-data
-                (while (re-search-forward re nil t)
-                  (symbol-overlay-put-one symbol)
-                  (or p (setq p t))))
-              (when p
-                (symbol-overlay-put-one symbol)
-                (setq symbol-overlay-temp-symbol symbol)))))))))
+              (when (re-search-forward re (point-max) t 2)
+                (goto-char (max (window-start) (point-min)))
+                (let ((overlay-bound (min (window-end) (point-max))))
+                  (while (re-search-forward re overlay-bound t)
+                    (symbol-overlay-put-one symbol))
+                  (setq symbol-overlay-temp-symbol symbol))))))))))
 
 (defun symbol-overlay-ignored-p (symbol)
   "Determine whether SYMBOL should be temporarily highlighted."
