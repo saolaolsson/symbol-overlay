@@ -317,14 +317,35 @@ This only affects symbols in the current displayed window if
           (save-restriction
             (symbol-overlay-narrow symbol-overlay-scope
                                    symbol-overlay-displayed-window)
-            (goto-char (point-min))
-            (let ((re (symbol-overlay-regexp symbol)))
-              (when (re-search-forward re (point-max) t 2)
-                (goto-char (max (window-start) (point-min)))
-                (let ((overlay-bound (min (window-end) (point-max))))
-                  (while (re-search-forward re overlay-bound t)
-                    (symbol-overlay-put-one symbol))
-                  (setq symbol-overlay-temp-symbol symbol))))))))))
+              (goto-char (max (window-start) (point-min)))
+              (let ((overlay-bound (min (window-end) (point-max)))
+                    (re (symbol-overlay-regexp symbol))
+                    (n 0))
+                (while (re-search-forward re overlay-bound t)
+                  (symbol-overlay-put-one symbol)
+                  (setq n (1+ n)))
+                (setq symbol-overlay-temp-symbol symbol)
+                (when (< n 2)
+                    (when (re-search-forward re (point-max) t)
+                        return
+                    )
+                    (goto-char (point-min))
+                    (when (re-search-forward re (max (window-start) (point-min)) t)
+                        return
+                    )
+                    (symbol-overlay-remove-temp)
+                )
+                )))))))
+
+            ;; (goto-char (point-min))
+            ;; (let ((re (symbol-overlay-regexp symbol)))
+            ;;   (when (re-search-forward re (point-max) t 2)
+
+            ;;     (goto-char (max (window-start) (point-min)))
+            ;;     (let ((overlay-bound (min (window-end) (point-max))))
+            ;;       (while (re-search-forward re overlay-bound t)
+            ;;         (symbol-overlay-put-one symbol))
+            ;;       (setq symbol-overlay-temp-symbol symbol))))))))))
 
 (defun symbol-overlay-ignored-p (symbol)
   "Determine whether SYMBOL should be temporarily highlighted."
