@@ -328,9 +328,10 @@ depending on SCOPE and WINDOW."
 This only affects symbols in the current displayed window if
 `symbol-overlay-displayed-window' is non-nil."
   (when symbol-overlay-mode
+                (setq symbol-overlay-string nil)
+                  (force-mode-line-update)
     (let* ((case-fold-search nil)
-           (symbol (symbol-overlay-get-symbol t))
-           p)
+           (symbol (symbol-overlay-get-symbol t)))
       (when (and symbol
                  (not (symbol-overlay-assoc symbol))
                  (not (symbol-overlay-ignored-p symbol)))
@@ -339,16 +340,35 @@ This only affects symbols in the current displayed window if
           (save-restriction
             (symbol-overlay-narrow symbol-overlay-scope
                                    symbol-overlay-displayed-window)
-            (goto-char (point-min))
-            (let ((re (symbol-overlay-regexp symbol)))
-              (re-search-forward re nil t)
-              (save-match-data
-                (while (re-search-forward re nil t)
-                  (symbol-overlay-put-one symbol)
-                  (or p (setq p t))))
-              (when (or symbol-overlay-temp-highlight-single p)
-                (symbol-overlay-put-one symbol)
-                (setq symbol-overlay-temp-symbol symbol)))))))))
+            (setq
+                symbol-overlay-count-above-invisible 0
+                symbol-overlay-count-above-visible 0
+                symbol-overlay-count-below-visible 0
+                symbol-overlay-count-below-invisible 0)
+            (beginning-of-thing 'symbol)
+            (let ((re (symbol-overlay-regexp symbol))
+                  (point (point)))
+              (goto-char (point-min))
+              (while (re-search-forward re (window-start) t)
+                (cl-incf symbol-overlay-count-above-invisible))
+              (while (re-search-forward re point t)
+                (cl-incf symbol-overlay-count-above-visible))
+              (goto-char point)
+              (end-of-thing 'symbol)
+              (while (re-search-forward re (window-end) t)
+                (cl-incf symbol-overlay-count-below-visible))
+              (while (re-search-forward re (point-max) t)
+                (cl-incf symbol-overlay-count-below-invisible))
+              (when (> (+
+                    symbol-overlay-count-above-invisible
+                    symbol-overlay-count-above-visible
+                    symbol-overlay-count-below-visible
+                    symbol-overlay-count-below-invisible) 0)
+                (goto-char (max (window-start) (point-min)))
+                (let ((overlay-bound (min (window-end) (point-max))))
+                  (while (re-search-forward re overlay-bound t)
+                    (symbol-overlay-put-one symbol))
+                  (setq symbol-overlay-temp-symbol symbol))))))))))
 
 (defun symbol-overlay-ignored-p (symbol)
   "Determine whether SYMBOL should be temporarily highlighted."
